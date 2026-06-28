@@ -2,50 +2,59 @@
 # SYSTEM OUTPUTS (MANDATORY)
 # ============================================================================
 output "instance_id" {
-  description = "MANDATORY: VM ID for Backend Management"
-  value = var.use_mock_provider ? "mock-instance-id" : openstack_compute_instance_v2.nodejs_server[0].id
+  description = "VM ID for backend management"
+  value       = var.use_mock_provider ? "mock-instance-id" : openstack_compute_instance_v2.ubuntu_server[0].id
 }
 
 output "app_name" {
-  description = "MANDATORY: Der Name der Anwendung für das Backend-Management"
+  description = "Project name"
   value       = var.app_name
 }
+
 # ============================================================================
 # PUBLIC OUTPUTS
 # ============================================================================
 
 output "ssh_command" {
-  value = "ssh <username>@${var.use_mock_provider ? "mock-ip" : openstack_networking_floatingip_v2.nodejs_fip[0].address}"
+  description = "SSH command template (replace <username> with your account)"
+  value       = "ssh <username>@${var.use_mock_provider ? "mock-ip" : openstack_networking_floatingip_v2.ubuntu_fip[0].address}"
 }
 
-output "app_url" {
-  value = var.use_mock_provider ? "http://mock-ip:3000" : "http://${openstack_networking_floatingip_v2.nodejs_fip[0].address}:3000"
+output "shared_folder_path" {
+  description = "Path to the shared workspace on the VM"
+  value       = "/opt/${var.app_name}"
 }
+
+# ============================================================================
+# SENSITIVE OUTPUTS
+# ============================================================================
 
 output "admin_credentials" {
-  description = "Lecturer/Admin Login"
+  description = "Lecturer/Admin login"
   sensitive   = true
   value = {
-    username    = replace(replace(lower(var.admin_email), "@", "_"), ".", "_")
-    password    = random_password.admin_password.result
-    ssh_command = "ssh ${replace(replace(lower(var.admin_email), "@", "_"), ".", "_")}@${var.use_mock_provider ? "mock-ip" : openstack_networking_floatingip_v2.nodejs_fip[0].address}"
+    username      = replace(replace(lower(var.admin_username), "@", "_"), ".", "_")
+    password      = random_password.admin_password.result
+    ssh_command   = "ssh ${replace(replace(lower(var.admin_username), "@", "_"), ".", "_")}@${var.use_mock_provider ? "mock-ip" : openstack_networking_floatingip_v2.ubuntu_fip[0].address}"
+    shared_folder = "/opt/${var.app_name}"
   }
 }
 
 output "student_credentials" {
-  description = "Student Logins"
+  description = "Student logins"
   sensitive   = true
   value = {
-    for email in var.student_emails : email => {
-      username    = replace(replace(lower(email), "@", "_"), ".", "_")
-      password    = random_password.student_passwords[email].result
-      ssh_command = "ssh ${replace(replace(lower(email), "@", "_"), ".", "_")}@${var.use_mock_provider ? "mock-ip" : openstack_networking_floatingip_v2.nodejs_fip[0].address}"
+    for email in local.resolved_students : email => {
+      username      = replace(replace(lower(email), "@", "_"), ".", "_")
+      password      = random_password.student_passwords[email].result
+      ssh_command   = "ssh ${replace(replace(lower(email), "@", "_"), ".", "_")}@${var.use_mock_provider ? "mock-ip" : openstack_networking_floatingip_v2.ubuntu_fip[0].address}"
       shared_folder = "/opt/${var.app_name}"
     }
   }
 }
 
 output "ssh_private_key" {
-  sensitive = true
-  value     = tls_private_key.nodejs_ssh_key.private_key_openssh
+  description = "SSH private key for admin access via key"
+  sensitive   = true
+  value       = tls_private_key.ubuntu_ssh_key.private_key_openssh
 }

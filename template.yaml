@@ -1,162 +1,177 @@
-template:
-  # --- METADATA ---
-  name: "nodejs-group-project"
-  display_name: "Node.js Group Project"
-  description: "Kollaborative Entwicklungsumgebung (Shared Workspace) für Web-Engineering Projekte."
-  version: "1.1.0"
-  category: "education"
-  author: "DHBW CloudStore Team"
-  icon: nodejs.png
+name: ubuntu-vm
+display_name: "Ubuntu VM"
+description: "Blanke Ubuntu 22.04 VM mit Multi-User-Zugang. Optional: Node.js-Toolchain und Git-Repo-Klon."
+version: "2.0.0"
+category: "education"
+author: "DHBW CloudStore Team"
+icon: ubuntu.png
 
-  email_credentials:
-    enabled: true
+terraform:
+  working_dir: terraform/
+  required_version: ">= 1.6.0"
 
-  terraform:
-    working_dir: terraform/
-    required_version: ">= 1.6.0"
+tags:
+  - ubuntu
+  - linux
+  - education
+  - multi-user
 
-  tags:
-    - nodejs
-    - javascript
-    - education
-    - group-work
+email_credentials:
+  enabled: true
 
-  parameters:
-    # --- Allgemein ---
+deploy-strategy:
+  one-instance: true
+  one-per-group: true
+
+ui-groups:
+  - id: general
+    title: "Allgemein und Nutzer"
+    order: 1
+  - id: resources
+    title: "Ressourcen"
+    order: 2
+  - id: specific
+    title: "Optionale Software"
+    order: 3
+
+parameters:
+
+  general:
     - name: app_name
       type: string
+      required: true
+      validation:
+        pattern: "^[a-z0-9-]{3,20}$"
       description: "Projektname (wird Hostname und Name des Shared-Folders)"
-      required: true
-      validation:
-        pattern: "^[a-zA-Z0-9-_]{3,20}$"
       x-ui:
-        group: "Allgemein"
-        order: 1
+        group_id: general
+        in_group_order: 1
         icon: Server
-        placeholder: "z.B. web-engineering-project"
-        hint: "Nur Buchstaben, Zahlen, Bindestriche und Unterstriche (3-20 Zeichen)"
+        placeholder: "z.B. linux-basics-ws25"
+        hint: "Nur Kleinbuchstaben, Zahlen und Bindestriche (3-20 Zeichen)"
 
-    - name: admin_email
+    - name: admin_username
       type: string
-      description: "E-Mail des Dozenten (erhält Sudo-Rechte)"
       required: true
-      validation:
-        pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+      description: "Dozent (erhält Sudo-Rechte)"
       x-ui:
-        group: "Allgemein"
-        order: 2
+        group_id: general
+        in_group_order: 2
         icon: Users
-        placeholder: "dozent@dhbw-mannheim.de"
-        widget: user-picker
+        placeholder: "Dozent auswählen..."
+        widget:
+          type: user-picker
+          multi: false
+          extract: email
 
-    - name: student_emails
+    - name: students
       type: array
-      description: "E-Mails der Gruppenmitglieder (Max. 10)"
-      required: true
-      validation:
-        min_items: 1
-        max_items: 10
+      required: false
+      description: "Studierende (Linux-Accounts auf der VM, bei one-instance)"
       x-ui:
-        group: "Allgemein"
-        order: 3
+        group_id: general
+        in_group_order: 3
         icon: Users
-        widget: user-picker
-        multi: true
+        placeholder: "Studierende auswählen..."
+        widget:
+          type: user-picker
+          multi: true
+          extract: email
 
-    # --- Ressourcen ---
+    - name: student_groups
+      type: groups
+      required: false
+      description: "Projektgruppen der Studierenden (bei one-per-group: eine VM je Gruppe)"
+      x-ui:
+        group_id: general
+        in_group_order: 4
+        icon: Users
+        widget:
+          type: group-builder
+          extract: email
+
+  specific:
     - name: flavor_name
       type: selection
-      description: "VM-Größe für die Shared Development Environment"
       required: true
+      default: "gp1.small"
       options:
-        - label: "Small (1 CPU, 2 GB RAM)"
+        - label: "Small (1 CPU, 2 GB RAM) — Empfohlen"
           value: "gp1.small"
-        - label: "Medium (2 CPU, 4 GB RAM) — Empfohlen"
+        - label: "Medium (2 CPU, 4 GB RAM)"
           value: "gp1.medium"
         - label: "Large (4 CPU, 8 GB RAM)"
           value: "gp1.large"
-      default: "gp1.medium"
+      description: "VM-Größe"
       x-ui:
-        group: "Ressourcen"
-        order: 1
+        group_id: resources
+        in_group_order: 1
         icon: Cpu
-        hint: "Für 3-5 Personen wird Medium empfohlen"
+        hint: "Small reicht für Linux-Basics. Für mehr Nutzer oder zusätzliche Software größere Flavor wählen."
 
-    # --- Node.js Optionen ---
+    - name: install_nodejs
+      type: boolean
+      default: false
+      description: "Node.js installieren (inkl. NPM, PM2, Nodemon, TypeScript, NVM)"
+      x-ui:
+        group_id: specific
+        in_group_order: 1
+        hint: "Optional: Vorinstallierte Node.js-Toolchain für Web-Engineering."
+
     - name: node_version
       type: selection
-      description: "Node.js Version"
-      required: true
+      default: "20"
       options:
-        - label: "Node.js 20 (LTS) — Empfohlen"
+        - label: "Node.js 20 (LTS)"
           value: "20"
         - label: "Node.js 18 (LTS)"
           value: "18"
-      default: "20"
+      required: false
+      description: "Node.js Version (nur relevant wenn 'Node.js installieren' aktiv ist)"
       x-ui:
-        group: "Node.js Optionen"
-        order: 1
-        icon: Server
-        hint: "LTS-Versionen für stabile Projekte empfohlen"
+        group_id: specific
+        in_group_order: 2
 
-    # --- Repository ---
     - name: git_repo_url
       type: string
-      description: "Git Repository URL (wird in den Shared Folder geklont)"
       required: false
       validation:
         pattern: "^https?://.*\\.git$|^$"
+      description: "Git Repository URL (wird optional in den Shared-Folder geklont)"
       x-ui:
-        group: "Repository"
-        order: 1
-        icon: GitBranch
-        placeholder: "https://github.com/example/repo.git"
-        hint: "Optional: Projekt-Repository wird automatisch geklont"
+        group_id: specific
+        in_group_order: 3
+        placeholder: "https://github.com/org/repo.git"
+        hint: "Optional: Übungsmaterial, Setup-Skripte oder Dotfiles."
 
-  outputs:
-    # SYSTEM PFLICHTFELDER (Hidden)
-    - name: instance_id
-      description: "System ID der Instanz"
-      display: false
+outputs:
+  - name: instance_id
+    description: "System ID der Instanz"
+    display: false
 
-    - name: app_name
-      description: "Projektname"
-      display: true
+  - name: app_name
+    description: "Projektname"
+    display: true
 
-    # USER OUTPUTS
-    - name: app_url
-      description: "Web-Server URL (Port 3000)"
-      display: true
+  - name: ssh_command
+    description: "SSH Befehl für Zugriff"
+    display: true
 
-    - name: ssh_command
-      description: "SSH Befehl für Zugriff"
-      display: true
+  - name: shared_folder_path
+    description: "Pfad zum Shared Workspace"
+    display: true
 
-    - name: shared_folder_path
-      description: "Pfad zum Shared Workspace"
-      display: true
+  - name: admin_credentials
+    description: "Admin-Zugangsdaten (Dozent)"
+    sensitive: true
+    display: false
 
-    - name: admin_credentials
-      description: "Admin-Zugangsdaten (Dozent)"
-      sensitive: true
-      display: false
+  - name: student_credentials
+    description: "Studierenden-Zugangsdaten"
+    sensitive: true
+    display: false
 
-    - name: student_credentials
-      description: "Studierenden-Zugangsdaten"
-      sensitive: true
-      display: false
-
-    - name: ssh_private_key
-      description: "SSH Private Key"
-      sensitive: true
-      display: false
-
-  estimated_costs:
-    hourly: "0.05 - 0.15 EUR"
-    monthly: "40 - 110 EUR"
-
-  requirements:
-    - "SSH Port 22"
-    - "Node.js Port 3000"
-    - "Node.js Port 8080 (Optional: Zusätzliche Services)"
-    - "Git für Repository-Klone"
+  - name: ssh_private_key
+    description: "SSH Private Key"
+    sensitive: true
+    display: false

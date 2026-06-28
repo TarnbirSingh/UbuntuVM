@@ -2,77 +2,94 @@
 # SYSTEM VARIABLES (MANDATORY)
 # ============================================================================
 
-variable "deployment_id" { 
+variable "deployment_id" {
   description = "Unique deployment identifier"
   type        = string
-  
+
   validation {
     condition     = length(var.deployment_id) > 0
     error_message = "deployment_id must not be empty."
   }
 }
 
-variable "use_mock_provider" { 
+variable "use_mock_provider" {
   description = "Use mock provider for testing"
   type        = bool
-  default     = false 
+  default     = false
 }
 
 variable "app_name" {
-  description = "Name of the project (used for hostname and folder)"
+  description = "Name of the project (used for hostname and shared folder)"
   type        = string
   validation {
     condition     = can(regex("^[a-z0-9-]{3,20}$", var.app_name))
     error_message = "app_name: Nur Kleinbuchstaben, Zahlen und Bindestrich erlaubt (3-20 Zeichen)."
   }
 }
+
 # ============================================================================
-# USER INPUTS (VALIDATED CONTRACT)
+# USER INPUTS
 # ============================================================================
 
-variable "admin_email" {
-  description = "Email address of the lecturer (admin)"
+variable "admin_username" {
+  description = "E-Mail of the lecturer (admin, will be sudo-enabled)"
   type        = string
 
   validation {
-    condition     = can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", var.admin_email))
-    error_message = "The admin_email is invalid."
+    condition     = can(regex("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$", var.admin_username))
+    error_message = "admin_username must be a valid email address."
   }
 }
 
-variable "student_emails" {
-  description = "List of student emails"
+# Befüllt bei deploy-strategy = one-instance
+variable "students" {
+  description = "List of student emails (one-instance mode)"
   type        = list(string)
-  
-  validation {
-    # YAML Limit: Max 10 Students
-    condition     = length(var.student_emails) > 0 && length(var.student_emails) <= 10
-    error_message = "You must provide between 1 and 10 student emails."
-  }
+  default     = []
 
   validation {
-    # Prüft, ob ALLE E-Mails im Array valide sind
     condition = alltrue([
-      for email in var.student_emails : can(regex("^\\S+@\\S+\\.\\S+$", email))
+      for email in var.students : can(regex("^\\S+@\\S+\\.\\S+$", email))
     ])
-    error_message = "All items in student_emails must be valid email addresses."
+    error_message = "All items in students must be valid email addresses."
+  }
+}
+
+# Befüllt bei deploy-strategy = one-per-group (jeder Run bekommt eine isolierte Map mit genau einem Key)
+variable "student_groups" {
+  description = "Map of group name -> list of student emails (one-per-group mode)"
+  type        = map(list(string))
+  default     = {}
+
+  validation {
+    condition = alltrue([
+      for emails in values(var.student_groups) : alltrue([
+        for email in emails : can(regex("^\\S+@\\S+\\.\\S+$", email))
+      ])
+    ])
+    error_message = "All emails in student_groups must be valid."
   }
 }
 
 variable "flavor_name" {
-  description = "Hardware Quota"
+  description = "Hardware quota"
   type        = string
-  default     = "gp1.medium"
+  default     = "gp1.small"
 
   validation {
-    # Whitelist Check
     condition     = contains(["gp1.small", "gp1.medium", "gp1.large"], var.flavor_name)
     error_message = "Invalid flavor. Allowed: gp1.small, gp1.medium, gp1.large."
   }
 }
 
+variable "install_nodejs" {
+  description = "Install Node.js toolchain (NPM, PM2, Nodemon, TypeScript, NVM)"
+  type        = bool
+  default     = false
+}
+
 variable "node_version" {
-  description = "Node.js Runtime Version"
+  description = "Node.js runtime version (only used when install_nodejs = true)"
   type        = string
   default     = "20"
 
@@ -83,12 +100,11 @@ variable "node_version" {
 }
 
 variable "git_repo_url" {
-  description = "Optional Git Repository to clone"
+  description = "Optional Git repository to clone into the shared folder"
   type        = string
   default     = ""
 
   validation {
-    # Erlaubt leeren String ODER validen HTTP(S) Git Link
     condition     = var.git_repo_url == "" || can(regex("^https?://.*\\.git$", var.git_repo_url))
     error_message = "Git URL must start with http(s):// and end with .git (or be empty)."
   }
@@ -98,22 +114,22 @@ variable "git_repo_url" {
 # INFRASTRUCTURE DEFAULTS
 # ============================================================================
 
-variable "image_name" { 
+variable "image_name" {
   type    = string
-  default = "Ubuntu 22.04" 
+  default = "Ubuntu 22.04"
 }
 
-variable "network_name" { 
+variable "network_name" {
   type    = string
-  default = "NAT" 
+  default = "NAT"
 }
 
-variable "external_network_name" { 
+variable "external_network_name" {
   type    = string
-  default = "DHBW" 
+  default = "DHBW"
 }
 
-variable "floating_ip_pool" { 
+variable "floating_ip_pool" {
   type    = string
-  default = "DHBW" 
+  default = "DHBW"
 }
