@@ -58,14 +58,15 @@ Unterstützte Deployment-Strategien (über den CloudStore-Wizard):
 
 ## Username-Konvention
 
-E-Mails werden zu Unix-Usernames konvertiert:
+E-Mails werden zu Linux-Usernames konvertiert. Der lokale Teil bleibt, jedes Domain-Token wird auf max. 2 Zeichen gekürzt (hält den Username unter dem Linux-Limit von 32 Zeichen).
 
 | Email | Username |
 |---|---|
-| `s2327001@student.dhbw-mannheim.de` | `s2327001_student_dhbw-mannheim_de` |
-| `prof1@dhbw-mannheim.de` | `prof1_dhbw-mannheim_de` |
+| `s2327001@student.dhbw-mannheim.de` | `s2327001_st_dh-ma_de` |
+| `prof1@dhbw-mannheim.de` | `prof1_dh-ma_de` |
+| `max@gmail.com` | `max_gm_co` |
 
-Regel: `@` und `.` → `_`, alles lowercase.
+Regel: `<local>@<dom1>.<dom2>...` → `<local>_<dom1[:2]>_<dom2[:2]>...`, alles lowercase. Bindestriche im Domain-Teil bleiben erhalten (`dhbw-mannheim` → `dh-ma`).
 
 ## Zugriff
 
