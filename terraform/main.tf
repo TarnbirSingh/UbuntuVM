@@ -31,6 +31,25 @@ locals {
   # Bei one-per-group bekommt jeder Run eine Map mit genau einem Group-Key.
   # Bei one-instance ist student_groups leer und students enthält die Liste.
   resolved_students = length(var.student_groups) > 0 ? flatten(values(var.student_groups)) : var.students
+
+  # Email → Linux-Username: Local-Part bleibt, Domain-Tokens werden auf max. 2 Zeichen gekappt.
+  # Begrenzt zusätzlich hart auf 32 Zeichen (UT_NAMESIZE).
+  # Beispiele:
+  #   s2327001@student.dhbw-mannheim.de → s2327001_st_dh-ma_de
+  #   prof1@dhbw-mannheim.de            → prof1_dh-ma_de
+  email_to_username = {
+    for email in concat([var.admin_username], local.resolved_students) :
+    email => substr(
+      lower(join("_", concat(
+        [split("@", email)[0]],
+        [
+          for token in split(".", split("@", email)[1]) :
+          join("-", [for part in split("-", token) : substr(part, 0, 2)])
+        ]
+      ))),
+      0, 32
+    )
+  }
 }
 
 # ============================================================================
@@ -142,12 +161,12 @@ resource "openstack_compute_instance_v2" "ubuntu_server" {
     node_version   = var.node_version
     git_repo_url   = var.git_repo_url
 
-    admin_username = replace(replace(lower(var.admin_username), "@", "_"), ".", "_")
+    admin_username = local.email_to_username[var.admin_username]
     admin_password = random_password.admin_password.result
 
     students = [
       for email in local.resolved_students : {
-        username = replace(replace(lower(email), "@", "_"), ".", "_")
+        username = local.email_to_username[email]
         password = random_password.student_passwords[email].result
       }
     ]
