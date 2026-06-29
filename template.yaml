@@ -73,6 +73,7 @@ parameters:
         in_group_order: 3
         icon: Users
         placeholder: "Studierende auswählen..."
+        hint: "Befüllen, wenn alle Studierenden sich eine geteilte VM teilen sollen. → Strategie 'one-instance' im nächsten Schritt."
         widget:
           type: user-picker
           multi: true
@@ -86,6 +87,7 @@ parameters:
         group_id: general
         in_group_order: 4
         icon: Users
+        hint: "Befüllen, wenn pro Gruppe eine eigene VM entstehen soll. → Strategie 'one-per-group' im nächsten Schritt."
         widget:
           type: group-builder
           extract: email
